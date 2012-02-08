@@ -1,5 +1,6 @@
 require 'rubygems'
 require 'ffi'
 
-require "rmq/rmq"
+require "rmq/queue_manager"
+require "rmq/exceptions"
 

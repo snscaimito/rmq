@@ -7,8 +7,12 @@ describe 'RMQ' do
   end
 
   it 'should connect to local queue manager' do
-    ENV['MQSERVER'] = "SYSTEM.DEF.SVRCONN/TCP/127.0.0.1(1414)"
     qm = QueueManager::connect(SpecHelper::DATA[:queue_manager])
     qm.should_not be_nil
   end
+
+  it "should raise an exception for a wrong queue manager name" do
+    lambda { QueueManager::connect("INVALID_NAME") }.should raise_error(RMQException)
+  end
+
 end

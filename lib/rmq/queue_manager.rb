@@ -14,9 +14,9 @@ class QueueManager
     completion_code = completion_code_ptr.read_long
     reason_code = reason_code_ptr.read_long
 
-    puts "Hconn #{@hconn}"
-    puts "completion #{completion_code}"
-    puts "reason #{reason_code}"
+    unless completion_code == 0
+      raise RMQException.new(completion_code, reason_code), "Cannot connect to queue manager #{queue_manager}"
+    end
 
     self
   end
