@@ -9,7 +9,7 @@ module MQClient
   # MQCONN (QMgrName, Hconn, CompCode, Reason)
   attach_function :mqconn, :MQCONN,
                   [:string, :pointer, :pointer, :pointer], :void
-
-
+  attach_function :mqdisc, :MQDISC,
+                  [:pointer, :pointer, :pointer], :void
 
 end
