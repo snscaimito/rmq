@@ -43,6 +43,10 @@ module RMQ
     attach_function :mqai_inquire_bag, :mqInquireBag,
                     [:long, :long, :long, :pointer, :pointer, :pointer], :void
 
+    # mqDeleteBag (&Bag, CompCode, Reason)
+    attach_function :mqai_delete_bag, :mqDeleteBag,
+                    [:pointer, :pointer, :pointer], :void
+
 
     def create_admin_bag
       completion_code_ptr = FFI::MemoryPointer.new :long
@@ -132,6 +136,18 @@ module RMQ
       raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot inquire queue name from attributes bag" if completion_code_ptr.read_long != MQCC_OK
 
       string_ptr.read_string.strip
+    end
+
+    def delete_bag(bag_handle)
+      unless bag_handle == MQHB_UNUSABLE_HBAG
+        completion_code_ptr = FFI::MemoryPointer.new :long
+        reason_code_ptr = FFI::MemoryPointer.new :long
+        bag_handle_ptr = FFI::MemoryPointer.new :long
+        bag_handle_ptr.write_long(bag_handle)
+
+        mqai_delete_bag(bag_handle_ptr, completion_code_ptr, reason_code_ptr)
+        raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot delete bag" if completion_code_ptr.read_long != MQCC_OK
+      end
     end
 
   end

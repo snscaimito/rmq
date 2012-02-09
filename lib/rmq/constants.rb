@@ -513,6 +513,7 @@ module RMQ
        0 => :MQRC_NONE,
        2019 => :MQRC_HOBJ_ERROR,
        2309 => :MQRC_SELECTOR_NOT_PRESENT,
+       2320 => :MQRC_HBAG_ERROR,
        2324 => :MQRC_INQUIRY_COMMAND_ERROR
       }
       reason_codes[reason_code]

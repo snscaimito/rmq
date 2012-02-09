@@ -36,5 +36,4 @@ describe RMQ::QueueManager do
     @qm.find_queue("DOES_NOT_EXIST").should be_nil
   end
 
-
 end
