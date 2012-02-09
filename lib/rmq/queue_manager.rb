@@ -72,20 +72,14 @@ module RMQ
     end
 
     def create_queue(queue_name)
-#mqCreateBag(MQCBO_ADMIN_BAG, &adminBag, &compCode, &reason);
-#mqCreateBag(MQCBO_ADMIN_BAG, &responseBag, &compCode, &reason);
-#mqAddString(adminBag, MQCA_Q_NAME, MQBL_NULL_TERMINATED, qName, &compCode, &reason);
-#mqAddInteger(adminBag, MQIA_Q_TYPE, MQQT_LOCAL, &compCode, &reason);
-#mqExecute(hConn,                   /* MQ connection handle                 */
-#          MQCMD_CREATE_Q,          /* Command to be executed               */
-#          MQHB_NONE,               /* No options bag                       */
-#          adminBag,                /* Handle to bag containing commands    */
-#          responseBag,             /* Handle to bag to receive the response*/
-#          MQHO_NONE,               /* Put msg on SYSTEM.ADMIN.COMMAND.QUEUE*/
-#          MQHO_NONE,               /* Create a dynamic q for the response  */
-#          &compCode,               /* Completion code from the mqexecute   */
-#          &reason);                /* Reason code from mqexecute call      */
+      adminbag_handle = create_admin_bag
+      responsebag_handle = create_response_bag
+      add_string_to_bag(adminbag_handle, MQCA_Q_NAME, queue_name)
+      add_integer_to_bag(adminbag_handle, MQIA_Q_TYPE, MQQT_LOCAL)
+      execute(@hconn, MQCMD_CREATE_Q, MQHB_NONE, adminbag_handle, responsebag_handle, MQHO_NONE, MQHO_NONE)
 
+      delete_bag(adminbag_handle)
+      delete_bag(responsebag_handle)
     end
 
   end

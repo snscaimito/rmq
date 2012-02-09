@@ -19,12 +19,12 @@ describe RMQ::QueueManager do
     lambda { RMQ::QueueManager::connect("INVALID_NAME") }.should raise_error(RMQ::RMQException)
   end
 
-  #it "should create a new queue" do
-  #  @qm = RMQ::QueueManager::connect(SpecHelper::DATA[:queue_manager])
-  #  queue = @qm.create_queue("RMQ.SAMPLE")
-  #
-  #  @qm.find_queue("RMQ.SAMPLE").should_not be_nil
-  #end
+  it "should create a new queue" do
+    @qm = RMQ::QueueManager::connect(SpecHelper::DATA[:queue_manager])
+    queue = @qm.create_queue("RMQ.SAMPLE")
+
+    @qm.find_queue("RMQ.SAMPLE").should_not be_nil
+  end
 
   it "should find an existing queue" do
     @qm = RMQ::QueueManager::connect(SpecHelper::DATA[:queue_manager])
