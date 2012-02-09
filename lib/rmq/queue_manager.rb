@@ -44,51 +44,21 @@ module RMQ
     end
 
     def find_queue(queue_name)
-      completion_code_ptr = FFI::MemoryPointer.new :long
-      reason_code_ptr = FFI::MemoryPointer.new :long
-
-      adminbag_handle_ptr = FFI::MemoryPointer.new :long
-      mqai_create_bag(MQCBO_ADMIN_BAG, adminbag_handle_ptr, completion_code_ptr, reason_code_ptr)
-      raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot create admin bag" if completion_code_ptr.read_long != MQCC_OK
-      adminbag_handle = adminbag_handle_ptr.read_long
-
-      responsebag_handle_ptr = FFI::MemoryPointer.new :long
-      mqai_create_bag(MQCBO_ADMIN_BAG, responsebag_handle_ptr, completion_code_ptr, reason_code_ptr)
-      raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot create response bag" if completion_code_ptr.read_long != MQCC_OK
-      responsebag_handle = responsebag_handle_ptr.read_long
-
-      mqai_add_string(adminbag_handle, MQCA_Q_NAME, MQBL_NULL_TERMINATED,
-        "*", completion_code_ptr, reason_code_ptr)
-      raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot add string to admin bag" if completion_code_ptr.read_long != MQCC_OK
-
-      mqai_add_integer(adminbag_handle, MQIA_Q_TYPE, MQQT_LOCAL, completion_code_ptr, reason_code_ptr)
-      raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot add integer to admin bag" if completion_code_ptr.read_long != MQCC_OK
-
-      mqai_add_inquiry(adminbag_handle, MQIA_CURRENT_Q_DEPTH, completion_code_ptr, reason_code_ptr)
-      raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot add inquiry to admin bag" if completion_code_ptr.read_long != MQCC_OK
-
-      mqai_execute(@hconn, MQCMD_INQUIRE_Q, MQHB_NONE, adminbag_handle,
-        responsebag_handle, MQHO_NONE, MQHO_NONE, completion_code_ptr, reason_code_ptr)
-      raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot execute admin bag" if completion_code_ptr.read_long != MQCC_OK
-
-      number_of_bags_ptr = FFI::MemoryPointer.new :long
-      mqai_count_items(responsebag_handle, MQHA_BAG_HANDLE, number_of_bags_ptr, completion_code_ptr, reason_code_ptr)
-      raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot count items in response bag" if completion_code_ptr.read_long != MQCC_OK
-      number_of_bags = number_of_bags_ptr.read_long
-
       queue_names = []
+
+      adminbag_handle = create_admin_bag
+      responsebag_handle = create_response_bag
+      add_string_to_bag(adminbag_handle, MQCA_Q_NAME, "*")
+      add_integer_to_bag(adminbag_handle, MQIA_Q_TYPE, MQQT_LOCAL)
+      add_inquiry(adminbag_handle, MQIA_CURRENT_Q_DEPTH)
+
+      execute(@hconn, MQCMD_INQUIRE_Q, MQHB_NONE, adminbag_handle, responsebag_handle, MQHO_NONE, MQHO_NONE)
+
+      number_of_bags = count_items(responsebag_handle, MQHA_BAG_HANDLE)
+
       for bag_number in (0..number_of_bags - 1)
-        attributes_bag_ptr = FFI::MemoryPointer.new :long
-        mqai_inquire_bag(responsebag_handle, MQHA_BAG_HANDLE, bag_number, attributes_bag_ptr, completion_code_ptr, reason_code_ptr)
-        raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot inquire attributes bag handle from response bag" if completion_code_ptr.read_long != MQCC_OK
-        attributes_bag_handle = attributes_bag_ptr.read_long
-
-        queue_name_ptr = FFI::MemoryPointer.new :char, MQ_Q_NAME_LENGTH
-        queue_name_length_ptr = FFI::MemoryPointer.new :long
-        mqai_inquire_string(attributes_bag_handle, MQCA_Q_NAME, 0, MQ_Q_NAME_LENGTH, queue_name_ptr, queue_name_length_ptr, nil, completion_code_ptr, reason_code_ptr)
-        raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot inquire queue name from attributes bag" if completion_code_ptr.read_long != MQCC_OK
-
-        queue_names.push queue_name_ptr.read_string.strip
+        attributes_bag_handle = inquire_bag(responsebag_handle, MQHA_BAG_HANDLE, bag_number)
+        queue_names.push inquire_string(attributes_bag_handle, MQCA_Q_NAME, 0)
       end
 
       if queue_names.include?(queue_name)
@@ -96,6 +66,10 @@ module RMQ
       else
         nil
       end
+    end
+
+    def create_queue(queue_name)
+
     end
 
   end
