@@ -4,4 +4,5 @@ require 'ffi'
 require "rmq/constants"
 require "rmq/queue_manager"
 require "rmq/exceptions"
+require "rmq/queue"
 
