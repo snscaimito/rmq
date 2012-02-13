@@ -24,6 +24,8 @@ describe RMQ::QueueManager do
     queue = @qm.create_queue("RMQ.SAMPLE")
 
     @qm.find_queue("RMQ.SAMPLE").should_not be_nil
+
+    @qm.delete_queue("RMQ.SAMPLE")
   end
 
   it "should find an existing queue" do
@@ -34,6 +36,15 @@ describe RMQ::QueueManager do
   it "should not find a non-existing queue" do
     @qm = RMQ::QueueManager::connect(SpecHelper::DATA[:queue_manager])
     @qm.find_queue("DOES_NOT_EXIST").should be_nil
+  end
+
+  it "should delete a queue" do
+    @qm = RMQ::QueueManager::connect(SpecHelper::DATA[:queue_manager])
+    @qm.create_queue("RMQ.SAMPLE")
+    @qm.find_queue("RMQ.SAMPLE").should_not be_nil
+
+    @qm.delete_queue("RMQ.SAMPLE")
+    @qm.find_queue("RMQ.SAMPLE").should be_nil
   end
 
 end

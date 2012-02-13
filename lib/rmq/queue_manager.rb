@@ -82,5 +82,16 @@ module RMQ
       delete_bag(responsebag_handle)
     end
 
+    def delete_queue(queue_name)
+      adminbag_handle = create_admin_bag
+      responsebag_handle = create_response_bag
+      add_string_to_bag(adminbag_handle, MQCA_Q_NAME, queue_name)
+
+      execute(@hconn, MQCMD_DELETE_Q, MQHB_NONE, adminbag_handle, responsebag_handle, MQHO_NONE, MQHO_NONE)
+
+      delete_bag(adminbag_handle)
+      delete_bag(responsebag_handle)
+    end
+
   end
 end
