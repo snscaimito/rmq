@@ -3,7 +3,7 @@ module RMQ
     include Constants
     extend FFI::Library
 
-    ffi_lib "C:\\Program Files (x86)\\IBM\\WebSphere MQ\\bin\\mqic32.dll"
+    ffi_lib "mqic32.dll"
     ffi_convention :stdcall
 
     attach_function :mqconn, :MQCONN,
