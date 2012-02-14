@@ -2,6 +2,8 @@ module RMQ
   class Queue
     include MQClient
 
+    # TODO add some caching for the queue handle
+
     def initialize(queue_manager, name)
       @queue_manager = queue_manager
       @queue_name = name
@@ -20,5 +22,15 @@ module RMQ
       queue_depth(@queue_manager.connection_handle, @queue_name)
     end
 
+    def get_message
+      @queue_handle = open_queue(@queue_manager.connection_handle, @queue_name, Constants::MQOO_INPUT_SHARED) if @queue_handle.nil?
+
+      payload = get_message_from_queue(@queue_manager.connection_handle, @queue_handle)
+
+      close_queue(@queue_manager.connection_handle, @queue_handle, Constants::MQCO_NONE)
+      @queue_handle = nil
+
+      payload
+    end
   end
 end

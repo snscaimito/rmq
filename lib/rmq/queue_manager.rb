@@ -92,7 +92,6 @@ module RMQ
       add_string_to_bag(adminbag_handle, MQCA_Q_NAME, queue_name)
 
       if purge # delete queue regardless of messages in it
-        puts "purging queue"
         add_integer_to_bag(adminbag_handle, MQIACF_PURGE, MQPO_YES)
       end
 

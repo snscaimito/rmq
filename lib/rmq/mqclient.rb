@@ -15,6 +15,10 @@ module RMQ
     attach_function :mqput, :MQPUT,
                     [:long, :long, :pointer, :pointer, :long, :string, :pointer, :pointer], :void
 
+    # MQGET (Hconn, Hobj, &MsgDesc, &GetMsgOpts, BufferLength, Buffer, &DataLength, &CompCode, &Reason)
+    attach_function :mqget, :MQGET,
+                    [:long, :long, :pointer, :pointer, :long, :pointer, :pointer, :pointer, :pointer], :void
+
     # MQOPEN (Hconn, &ObjDesc, Options, &Hobj, &CompCode, &Reason)
     attach_function :mqopen, :MQOPEN,
                     [:long, :pointer, :long, :pointer, :pointer, :pointer], :void
@@ -207,9 +211,9 @@ module RMQ
     end
 
     def put_message_on_queue(connection_handle, queue_handle, payload)
-      message_options = MQClient::MessageOptions.new
-      message_options[:StrucId] = MQClient::MessageOptions::MQPMO_STRUC_ID
-      message_options[:Version] = MQClient::MessageOptions::MQPMO_VERSION_1
+      message_options = MQClient::PutMessageOptions.new
+      message_options[:StrucId] = MQClient::PutMessageOptions::MQPMO_STRUC_ID
+      message_options[:Version] = MQClient::PutMessageOptions::MQPMO_VERSION_1
 
       message_descriptor = MQClient::MessageDescriptor.new
       message_descriptor[:StrucId] = MQClient::MessageDescriptor::MQMD_STRUC_ID
@@ -245,6 +249,33 @@ module RMQ
       delete_bag(responsebag_handle)
 
       queue_depth
+    end
+
+    def get_message_from_queue(connection_handle, queue_handle)
+      completion_code_ptr = FFI::MemoryPointer.new :long
+      reason_code_ptr = FFI::MemoryPointer.new :long
+      data_length_ptr = FFI::MemoryPointer.new :long
+
+      message_options = GetMessageOptions.new
+      message_options[:StrucId] = GetMessageOptions::MQGMO_STRUC_ID
+      message_options[:Version] = GetMessageOptions::MQGMO_VERSION_1
+      message_options[:Options] = GetMessageOptions::MQGMO_ACCEPT_TRUNCATED_MSG
+
+      message_descriptor = MQClient::MessageDescriptor.new
+      message_descriptor[:StrucId] = MQClient::MessageDescriptor::MQMD_STRUC_ID
+      message_descriptor[:Version] = MQClient::MessageDescriptor::MQMD_VERSION_1
+
+      # TODO determine message length and then reissue call
+#      mqget(connection_handle, queue_handle, message_descriptor, message_options, 0, nil, data_length_ptr, completion_code_ptr, reason_code_ptr)
+#      raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot learn message length" if completion_code_ptr.read_long == MQCC_FAILED
+
+#      data_length = data_length_ptr.read_long
+      data_length = 8192
+      buffer_ptr = FFI::MemoryPointer.new :char, data_length
+      mqget(connection_handle, queue_handle, message_descriptor, message_options, data_length, buffer_ptr, data_length_ptr, completion_code_ptr, reason_code_ptr)
+      raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot learn message length" if completion_code_ptr.read_long == MQCC_FAILED
+
+      buffer_ptr.read_string
     end
 
   end

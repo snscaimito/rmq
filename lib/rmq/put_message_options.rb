@@ -1,7 +1,7 @@
 module RMQ
   module MQClient
 
-    class MessageOptions < FFI::Struct
+    class PutMessageOptions < FFI::Struct
       MQPMO_STRUC_ID    = "PMO "
       MQPMO_VERSION_1   = 1
       MQPMO_SYNCPOINT   = 0x00000002
