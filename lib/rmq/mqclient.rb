@@ -11,6 +11,18 @@ module RMQ
     attach_function :mqdisc, :MQDISC,
                     [:pointer, :pointer, :pointer], :void
 
+    # MQPUT (Hconn, Hobj, &MsgDesc, &PutMsgOpts, BufferLength, &Buffer, &CompCode, &Reason)
+    attach_function :mqput, :MQPUT,
+                    [:long, :long, :pointer, :pointer, :long, :string, :pointer, :pointer], :void
+
+    # MQOPEN (Hconn, &ObjDesc, Options, &Hobj, &CompCode, &Reason)
+    attach_function :mqopen, :MQOPEN,
+                    [:long, :pointer, :long, :pointer, :pointer, :pointer], :void
+
+    # MQCLOSE (Hconn, &Hobj, Options, &CompCode, &Reason)
+    attach_function :mqclose, :MQCLOSE,
+                    [:long, :pointer, :long, :pointer, :pointer], :void
+
     # mqCreateBag (Options, &Bag, &CompCode, &Reason)
     attach_function :mqai_create_bag, :mqCreateBag,
                     [:long, :pointer, :pointer, :pointer], :void
@@ -26,6 +38,10 @@ module RMQ
     # mqInquireString (Bag, Selector, ItemIndex, BufferLength, Buffer, &StringLength, &CodedCharSetId, &CompCode, &Reason)
     attach_function :mqai_inquire_string, :mqInquireString,
                     [:long, :long, :long, :long, :pointer, :pointer, :pointer, :pointer, :pointer], :void
+
+    # mqInquireInteger (Bag, Selector, ItemIndex, &ItemValue, &CompCode, &Reason);
+    attach_function :mqai_inquire_integer, :mqInquireInteger,
+                    [:long, :long, :long, :pointer, :pointer, :pointer], :void
 
     # mqAddInquiry (Bag, Selector, &CompCode, &Reason)
     attach_function :mqai_add_inquiry, :mqAddInquiry,
@@ -133,9 +149,20 @@ module RMQ
       string_ptr = FFI::MemoryPointer.new :char, 255
       length_ptr = FFI::MemoryPointer.new :long
       mqai_inquire_string(bag_handle, selector, item_index, 255, string_ptr, length_ptr, nil, completion_code_ptr, reason_code_ptr)
-      raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot inquire queue name from attributes bag" if completion_code_ptr.read_long != MQCC_OK
+      raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot inquire string from attributes bag" if completion_code_ptr.read_long != MQCC_OK
 
       string_ptr.read_string.strip
+    end
+
+    def inquire_integer(bag_handle, selector, item_index)
+      completion_code_ptr = FFI::MemoryPointer.new :long
+      reason_code_ptr = FFI::MemoryPointer.new :long
+      item_value_ptr = FFI::MemoryPointer.new :long
+
+      mqai_inquire_integer(bag_handle, selector, item_index, item_value_ptr, completion_code_ptr, reason_code_ptr)
+      raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot inquire integer from attributes bag" if completion_code_ptr.read_long != MQCC_OK
+
+      item_value_ptr.read_long
     end
 
     def delete_bag(bag_handle)
@@ -148,6 +175,76 @@ module RMQ
         mqai_delete_bag(bag_handle_ptr, completion_code_ptr, reason_code_ptr)
         raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot delete bag" if completion_code_ptr.read_long != MQCC_OK
       end
+    end
+
+    def open_queue(connection_handle, queue_name, options)
+      object_descriptor = MQClient::ObjectDescriptor.new
+      object_descriptor[:StrucId] = MQClient::ObjectDescriptor::MQOD_STRUC_ID
+      object_descriptor[:Version] = MQClient::ObjectDescriptor::MQOD_VERSION_1
+      object_descriptor[:ObjectType] = MQClient::ObjectDescriptor::MQOT_Q
+      object_descriptor[:ObjectName] = queue_name
+
+      completion_code_ptr = FFI::MemoryPointer.new :long
+      reason_code_ptr = FFI::MemoryPointer.new :long
+      queue_handle_ptr = FFI::MemoryPointer.new :long
+
+      mqopen(connection_handle, object_descriptor, options, queue_handle_ptr,
+        completion_code_ptr, reason_code_ptr)
+      raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot open queue" if completion_code_ptr.read_long != MQCC_OK
+
+      queue_handle_ptr.read_long
+    end
+
+    def close_queue(connection_handle, queue_handle, options)
+      completion_code_ptr = FFI::MemoryPointer.new :long
+      reason_code_ptr = FFI::MemoryPointer.new :long
+
+      queue_handle_ptr = FFI::MemoryPointer.new :long
+      queue_handle_ptr.write_long(queue_handle)
+
+      mqclose(connection_handle, queue_handle_ptr, options, completion_code_ptr, reason_code_ptr)
+      raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot close queue" if completion_code_ptr.read_long != MQCC_OK
+    end
+
+    def put_message_on_queue(connection_handle, queue_handle, payload)
+      message_options = MQClient::MessageOptions.new
+      message_options[:StrucId] = MQClient::MessageOptions::MQPMO_STRUC_ID
+      message_options[:Version] = MQClient::MessageOptions::MQPMO_VERSION_1
+
+      message_descriptor = MQClient::MessageDescriptor.new
+      message_descriptor[:StrucId] = MQClient::MessageDescriptor::MQMD_STRUC_ID
+      message_descriptor[:Version] = MQClient::MessageDescriptor::MQMD_VERSION_1
+      message_descriptor[:Expiry] = MQClient::MessageDescriptor::MQEI_UNLIMITED
+      message_descriptor[:Report] = MQClient::MessageDescriptor::MQRO_NONE
+      message_descriptor[:MsgType] = MQClient::MessageDescriptor::MQMT_DATAGRAM
+      message_descriptor[:Priority] = 1
+      message_descriptor[:Persistence] = MQClient::MessageDescriptor::MQPER_PERSISTENT
+      message_descriptor[:ReplyToQ] = ""
+
+      completion_code_ptr = FFI::MemoryPointer.new :long
+      reason_code_ptr = FFI::MemoryPointer.new :long
+
+      mqput(connection_handle, queue_handle, message_descriptor, message_options, payload.length, payload, completion_code_ptr, reason_code_ptr)
+      raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot send message" if completion_code_ptr.read_long != MQCC_OK
+    end
+
+    def queue_depth(connection_handle, queue_name)
+      adminbag_handle = create_admin_bag
+      responsebag_handle = create_response_bag
+
+      add_string_to_bag(adminbag_handle, MQCA_Q_NAME, queue_name)
+      add_integer_to_bag(adminbag_handle, MQIA_Q_TYPE, MQQT_LOCAL)
+      add_inquiry(adminbag_handle, MQIA_CURRENT_Q_DEPTH)
+
+      execute(connection_handle, MQCMD_INQUIRE_Q, MQHB_NONE, adminbag_handle, responsebag_handle, MQHO_NONE, MQHO_NONE)
+
+      attributes_bag_handle = inquire_bag(responsebag_handle, MQHA_BAG_HANDLE, 0)
+      queue_depth = inquire_integer(attributes_bag_handle, MQIA_CURRENT_Q_DEPTH, 0)
+
+      delete_bag(adminbag_handle)
+      delete_bag(responsebag_handle)
+
+      queue_depth
     end
 
   end

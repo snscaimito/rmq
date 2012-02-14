@@ -5,6 +5,8 @@ module RMQ
     include MQClient
     include Constants
 
+    attr_reader :connection_handle
+
     def self.connect(queue_manager)
       qm = QueueManager.new(queue_manager)
       qm.connect
@@ -23,7 +25,7 @@ module RMQ
 
       MQClient.mqconn(@queue_manager, hconn_ptr, completion_code_ptr, reason_code_ptr)
 
-      @hconn = hconn_ptr.read_long
+      @connection_handle = hconn_ptr.read_long
 
       unless completion_code_ptr.read_long == MQCC_OK
         raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot connect to queue manager #{@queue_manager}"
@@ -35,7 +37,7 @@ module RMQ
       reason_code_ptr = FFI::MemoryPointer.new :long
       hconn_ptr = FFI::MemoryPointer.new :long
 
-      hconn_ptr.write_long @hconn
+      hconn_ptr.write_long @connection_handle
       MQClient.mqdisc(hconn_ptr, completion_code_ptr, reason_code_ptr)
 
       unless completion_code_ptr.read_long == MQCC_OK
@@ -52,7 +54,7 @@ module RMQ
       add_integer_to_bag(adminbag_handle, MQIA_Q_TYPE, MQQT_LOCAL)
       add_inquiry(adminbag_handle, MQIA_CURRENT_Q_DEPTH)
 
-      execute(@hconn, MQCMD_INQUIRE_Q, MQHB_NONE, adminbag_handle, responsebag_handle, MQHO_NONE, MQHO_NONE)
+      execute(@connection_handle, MQCMD_INQUIRE_Q, MQHB_NONE, adminbag_handle, responsebag_handle, MQHO_NONE, MQHO_NONE)
 
       number_of_bags = count_items(responsebag_handle, MQHA_BAG_HANDLE)
 
@@ -65,7 +67,7 @@ module RMQ
       delete_bag(responsebag_handle)
 
       if queue_names.include?(queue_name)
-        RMQ::Queue.new(queue_name)
+        RMQ::Queue.new(self, queue_name)
       else
         nil
       end
@@ -76,18 +78,25 @@ module RMQ
       responsebag_handle = create_response_bag
       add_string_to_bag(adminbag_handle, MQCA_Q_NAME, queue_name)
       add_integer_to_bag(adminbag_handle, MQIA_Q_TYPE, MQQT_LOCAL)
-      execute(@hconn, MQCMD_CREATE_Q, MQHB_NONE, adminbag_handle, responsebag_handle, MQHO_NONE, MQHO_NONE)
+      execute(@connection_handle, MQCMD_CREATE_Q, MQHB_NONE, adminbag_handle, responsebag_handle, MQHO_NONE, MQHO_NONE)
 
       delete_bag(adminbag_handle)
       delete_bag(responsebag_handle)
+
+      RMQ::Queue.new(self, queue_name)
     end
 
-    def delete_queue(queue_name)
+    def delete_queue(queue_name, purge = true)
       adminbag_handle = create_admin_bag
       responsebag_handle = create_response_bag
       add_string_to_bag(adminbag_handle, MQCA_Q_NAME, queue_name)
 
-      execute(@hconn, MQCMD_DELETE_Q, MQHB_NONE, adminbag_handle, responsebag_handle, MQHO_NONE, MQHO_NONE)
+      if purge # delete queue regardless of messages in it
+        puts "purging queue"
+        add_integer_to_bag(adminbag_handle, MQIACF_PURGE, MQPO_YES)
+      end
+
+      execute(@connection_handle, MQCMD_DELETE_Q, MQHB_NONE, adminbag_handle, responsebag_handle, MQHO_NONE, MQHO_NONE)
 
       delete_bag(adminbag_handle)
       delete_bag(responsebag_handle)

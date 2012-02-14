@@ -22,6 +22,7 @@ describe RMQ::QueueManager do
   it "should create a new queue" do
     @qm = RMQ::QueueManager::connect(SpecHelper::DATA[:queue_manager])
     queue = @qm.create_queue("RMQ.SAMPLE")
+    queue.should_not be_nil
 
     @qm.find_queue("RMQ.SAMPLE").should_not be_nil
 
