@@ -2,6 +2,8 @@ Ruby Wrapper for MQ Series client API
 =====================================
 rmq wraps the C API for IBM MQ Series message broker.
 
+* Don't forget to set the MQSERVER environment variable
+
 Running Specs
 =============
 

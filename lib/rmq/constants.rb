@@ -776,6 +776,7 @@ module RMQ
     def decode_reason_code(reason_code)
       reason_codes = {
        0 => :MQRC_NONE,
+       2002 => :MQRC_ALREADY_CONNECTED,
        2019 => :MQRC_HOBJ_ERROR,
        2033 => :MQRC_NO_MSG_AVAILABLE,
        2037 => :MQRC_NOT_OPEN_FOR_INPUT,

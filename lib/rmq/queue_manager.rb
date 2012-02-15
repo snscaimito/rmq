@@ -19,6 +19,8 @@ module RMQ
     end
 
     def connect
+      raise "Please set MQSERVER environment variable before trying to connect to a queue manager" if ENV['MQSERVER'].empty?
+
       hconn_ptr = FFI::MemoryPointer.new :long
       completion_code_ptr = FFI::MemoryPointer.new :long
       reason_code_ptr = FFI::MemoryPointer.new :long

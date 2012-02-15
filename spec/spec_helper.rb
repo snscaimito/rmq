@@ -1,7 +1,7 @@
 require 'rspec'
 require 'rmq'
 
-ENV['MQSERVER'] = "SYSTEM.DEF.SVRCONN/TCP/127.0.0.1(1414)"
+MQSERVER = "SYSTEM.DEF.SVRCONN/TCP/127.0.0.1(1414)"
 
 module SpecHelper
   DATA = {
@@ -12,4 +12,8 @@ end
 RSpec.configure do |config|
   config.color_enabled = true
   config.formatter     = 'documentation'
+
+  config.before(:each) do
+    ENV['MQSERVER'] = MQSERVER
+  end
 end
