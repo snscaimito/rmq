@@ -9,6 +9,8 @@ module RMQ
       MQMT_DATAGRAM         = 8
       MQPER_PERSISTENT      = 1
 
+      MSG_ID_LENGTH = 24
+
       layout  :StrucId, [:char, 4],
         :Version, :long,
         :Report, :long,
@@ -20,7 +22,7 @@ module RMQ
         :Format, [:char, 8],
         :Priority, :long,
         :Persistence, :long,
-        :MsgId, [:char, 24],
+        :MsgId, [:char, MSG_ID_LENGTH],
         :CorrelId, [:char, 24],
         :BackoutCount, :long,
         :ReplyToQ, [:char, 48],

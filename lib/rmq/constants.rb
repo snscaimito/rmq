@@ -773,6 +773,8 @@ module RMQ
       completion_codes[completion_code]
     end
 
+    MQRC_TRUNCATED_MSG_FAILED = 2080
+
     def decode_reason_code(reason_code)
       reason_codes = {
        0 => :MQRC_NONE,
@@ -781,7 +783,7 @@ module RMQ
        2033 => :MQRC_NO_MSG_AVAILABLE,
        2037 => :MQRC_NOT_OPEN_FOR_INPUT,
        2079 => :MQRC_TRUNCATED_MSG_ACCEPTED,
-       2080 => :MQRC_TRUNCATED_MSG_FAILED,
+       MQRC_TRUNCATED_MSG_FAILED => :MQRC_TRUNCATED_MSG_FAILED,
        2186 => :MQRC_GMO_ERROR,
        2309 => :MQRC_SELECTOR_NOT_PRESENT,
        2320 => :MQRC_HBAG_ERROR,

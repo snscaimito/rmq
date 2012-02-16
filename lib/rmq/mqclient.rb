@@ -252,33 +252,44 @@ module RMQ
     end
 
     def get_message_from_queue(connection_handle, queue_handle, timeout)
+      puts "--- get message from queue"
       completion_code_ptr = FFI::MemoryPointer.new :long
       reason_code_ptr = FFI::MemoryPointer.new :long
       data_length_ptr = FFI::MemoryPointer.new :long
 
-      message_options = prepare_get_message_options(timeout)
+      message_options = prepare_get_message_options(timeout, false)
       message_descriptor = prepare_get_message_descriptor
 
-      # TODO determine message length and then reissue call
-#      mqget(connection_handle, queue_handle, message_descriptor, message_options, 0, nil, data_length_ptr, completion_code_ptr, reason_code_ptr)
-#      raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot learn message length" if completion_code_ptr.read_long == MQCC_FAILED
-
-#      data_length = data_length_ptr.read_long
-      data_length = 8192
+      data_length = 8 * 1024
       buffer_ptr = FFI::MemoryPointer.new :char, data_length
+
       mqget(connection_handle, queue_handle, message_descriptor, message_options, data_length, buffer_ptr, data_length_ptr, completion_code_ptr, reason_code_ptr)
-      raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot learn message length" if completion_code_ptr.read_long == MQCC_FAILED
+
+      if (completion_code_ptr.read_long == MQCC_WARNING && reason_code_ptr.read_long == MQRC_TRUNCATED_MSG_FAILED)
+          msg_id = message_descriptor[:MsgId]
+          data_length = data_length_ptr.read_long
+          buffer_ptr = FFI::MemoryPointer.new :char, data_length
+          message_descriptor = prepare_get_message_descriptor(msg_id)
+          mqget(connection_handle, queue_handle, message_descriptor, message_options, data_length, buffer_ptr, data_length_ptr, completion_code_ptr, reason_code_ptr)
+          raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot read message again after learning message length" if completion_code_ptr.read_long == MQCC_FAILED
+      else
+        raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot learn message length" unless completion_code_ptr.read_long == MQCC_OK
+      end
 
       Message.new(buffer_ptr.read_string, message_descriptor)
     end
 
     private
 
-    def prepare_get_message_options(timeout)
+    def prepare_get_message_options(timeout, accept_truncated_msg)
       message_options = GetMessageOptions.new
       message_options[:StrucId] = GetMessageOptions::MQGMO_STRUC_ID
       message_options[:Version] = GetMessageOptions::MQGMO_VERSION_1
-      message_options[:Options] = GetMessageOptions::MQGMO_ACCEPT_TRUNCATED_MSG
+      message_options[:Options] = 0
+
+      if accept_truncated_msg
+        message_options[:Options] = GetMessageOptions::MQGMO_ACCEPT_TRUNCATED_MSG | message_options[:Options]
+      end
 
       if timeout > 0
         message_options[:Options] = GetMessageOptions::MQGMO_WAIT | message_options[:Options]
@@ -288,10 +299,23 @@ module RMQ
       message_options
     end
 
-    def prepare_get_message_descriptor
+    def print_msg_id(msg_id)
+      puts "printing msg id"
+      for i in (0..MQClient::MessageDescriptor::MSG_ID_LENGTH-1) do
+        puts "#{i} = #{msg_id[i]}"
+      end
+    end
+
+    def prepare_get_message_descriptor(msg_id = nil)
       message_descriptor = MQClient::MessageDescriptor.new
       message_descriptor[:StrucId] = MQClient::MessageDescriptor::MQMD_STRUC_ID
       message_descriptor[:Version] = MQClient::MessageDescriptor::MQMD_VERSION_1
+
+      if !msg_id.nil?
+        for i in (0..MQClient::MessageDescriptor::MSG_ID_LENGTH-1) do
+          message_descriptor[:MsgId][i] = msg_id[i]
+        end
+      end
 
       message_descriptor
     end

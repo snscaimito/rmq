@@ -40,4 +40,8 @@ describe RMQ::Queue do
     lambda { @queue.get_message(2) }.should raise_error(RMQ::RMQTimeOutError)
   end
 
+  it "should time out waiting for a message and not return any payload" do
+    lambda { @queue.get_message_payload(2) }.should raise_error(RMQ::RMQTimeOutError)
+  end
+
 end
