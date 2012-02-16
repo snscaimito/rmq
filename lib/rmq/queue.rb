@@ -22,15 +22,27 @@ module RMQ
       queue_depth(@queue_manager.connection_handle, @queue_name)
     end
 
-    def get_message
+    # timeout is in seconds
+    def get_message(timeout = 0)
       @queue_handle = open_queue(@queue_manager.connection_handle, @queue_name, Constants::MQOO_INPUT_SHARED) if @queue_handle.nil?
 
-      payload = get_message_from_queue(@queue_manager.connection_handle, @queue_handle)
+      begin_time = Time.now.to_i
+      begin
+        message = get_message_from_queue(@queue_manager.connection_handle, @queue_handle, timeout)
+      rescue RMQException
+        end_time = Time.now.to_i
+        raise RMQTimeOutError.new if end_time - begin_time >= timeout
+      end
 
       close_queue(@queue_manager.connection_handle, @queue_handle, Constants::MQCO_NONE)
       @queue_handle = nil
 
-      payload
+      message
+    end
+
+    def get_message_payload
+      message = get_message
+      message.payload
     end
   end
 end

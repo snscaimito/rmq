@@ -251,19 +251,13 @@ module RMQ
       queue_depth
     end
 
-    def get_message_from_queue(connection_handle, queue_handle)
+    def get_message_from_queue(connection_handle, queue_handle, timeout)
       completion_code_ptr = FFI::MemoryPointer.new :long
       reason_code_ptr = FFI::MemoryPointer.new :long
       data_length_ptr = FFI::MemoryPointer.new :long
 
-      message_options = GetMessageOptions.new
-      message_options[:StrucId] = GetMessageOptions::MQGMO_STRUC_ID
-      message_options[:Version] = GetMessageOptions::MQGMO_VERSION_1
-      message_options[:Options] = GetMessageOptions::MQGMO_ACCEPT_TRUNCATED_MSG
-
-      message_descriptor = MQClient::MessageDescriptor.new
-      message_descriptor[:StrucId] = MQClient::MessageDescriptor::MQMD_STRUC_ID
-      message_descriptor[:Version] = MQClient::MessageDescriptor::MQMD_VERSION_1
+      message_options = prepare_get_message_options(timeout)
+      message_descriptor = prepare_get_message_descriptor
 
       # TODO determine message length and then reissue call
 #      mqget(connection_handle, queue_handle, message_descriptor, message_options, 0, nil, data_length_ptr, completion_code_ptr, reason_code_ptr)
@@ -275,7 +269,31 @@ module RMQ
       mqget(connection_handle, queue_handle, message_descriptor, message_options, data_length, buffer_ptr, data_length_ptr, completion_code_ptr, reason_code_ptr)
       raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot learn message length" if completion_code_ptr.read_long == MQCC_FAILED
 
-      buffer_ptr.read_string
+      Message.new(buffer_ptr.read_string, message_descriptor)
+    end
+
+    private
+
+    def prepare_get_message_options(timeout)
+      message_options = GetMessageOptions.new
+      message_options[:StrucId] = GetMessageOptions::MQGMO_STRUC_ID
+      message_options[:Version] = GetMessageOptions::MQGMO_VERSION_1
+      message_options[:Options] = GetMessageOptions::MQGMO_ACCEPT_TRUNCATED_MSG
+
+      if timeout > 0
+        message_options[:Options] = GetMessageOptions::MQGMO_WAIT | message_options[:Options]
+        message_options[:WaitInterval] = timeout * 1000
+      end
+
+      message_options
+    end
+
+    def prepare_get_message_descriptor
+      message_descriptor = MQClient::MessageDescriptor.new
+      message_descriptor[:StrucId] = MQClient::MessageDescriptor::MQMD_STRUC_ID
+      message_descriptor[:Version] = MQClient::MessageDescriptor::MQMD_VERSION_1
+
+      message_descriptor
     end
 
   end

@@ -1,8 +1,14 @@
 require 'spec_helper'
 
 describe RMQ::QueueManager do
+  SAMPLE_QUEUE = SpecHelper::DATA[:sample_queue]
 
   after(:each) do
+    begin
+      @qm.delete_queue(SAMPLE_QUEUE) if !@qm.find_queue(SAMPLE_QUEUE).nil?
+    rescue
+      puts "Cannot delete #{SAMPLE_QUEUE}"
+    end
     @qm.disconnect if !@qm.nil?
   end
 
@@ -27,17 +33,17 @@ describe RMQ::QueueManager do
 
   it "should create a new queue" do
     @qm = RMQ::QueueManager::connect(SpecHelper::DATA[:queue_manager])
-    queue = @qm.create_queue("RMQ.SAMPLE")
+    queue = @qm.create_queue(SAMPLE_QUEUE)
     queue.should_not be_nil
 
-    @qm.find_queue("RMQ.SAMPLE").should_not be_nil
+    @qm.find_queue(SAMPLE_QUEUE).should_not be_nil
 
-    @qm.delete_queue("RMQ.SAMPLE")
+    @qm.delete_queue(SAMPLE_QUEUE)
   end
 
   it "should find an existing queue" do
     @qm = RMQ::QueueManager::connect(SpecHelper::DATA[:queue_manager])
-    @qm.find_queue("SYSTEM.ADMIN.COMMAND.QUEUE").should_not be_nil    # SAMPLE_IN needs to be changed to one that always exists
+    @qm.find_queue("SYSTEM.ADMIN.COMMAND.QUEUE").should_not be_nil
   end
 
   it "should not find a non-existing queue" do
@@ -47,11 +53,11 @@ describe RMQ::QueueManager do
 
   it "should delete a queue" do
     @qm = RMQ::QueueManager::connect(SpecHelper::DATA[:queue_manager])
-    @qm.create_queue("RMQ.SAMPLE")
-    @qm.find_queue("RMQ.SAMPLE").should_not be_nil
+    @qm.create_queue(SAMPLE_QUEUE)
+    @qm.find_queue(SAMPLE_QUEUE).should_not be_nil
 
-    @qm.delete_queue("RMQ.SAMPLE")
-    @qm.find_queue("RMQ.SAMPLE").should be_nil
+    @qm.delete_queue(SAMPLE_QUEUE)
+    @qm.find_queue(SAMPLE_QUEUE).should be_nil
   end
 
 end

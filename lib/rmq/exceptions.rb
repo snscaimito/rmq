@@ -14,4 +14,8 @@ module RMQ
       "#{to_s}. Reason code = #{decode_reason_code(reason_code)} (#{reason_code}), completion code = #{decode_completion_code(completion_code)}"
     end
   end
+
+  class RMQTimeOutError < RuntimeError
+  end
+
 end
