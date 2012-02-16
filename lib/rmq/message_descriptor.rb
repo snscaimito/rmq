@@ -22,6 +22,7 @@ module RMQ
         :Persistence, :long,
         :MsgId, [:char, 24],
         :CorrelId, [:char, 24],
+        :BackoutCount, :long,
         :ReplyToQ, [:char, 48],
         :ReplyToQMgr, [:char, 48],
         :UserIdentifier, [:char, 12],

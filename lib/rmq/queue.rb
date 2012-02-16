@@ -9,10 +9,10 @@ module RMQ
       @queue_name = name
     end
 
-    def put_message(payload)
+    def put_message(payload, reply_queue_name = "")
       @queue_handle = open_queue(@queue_manager.connection_handle, @queue_name, Constants::MQOO_OUTPUT) if @queue_handle.nil?
 
-      put_message_on_queue(@queue_manager.connection_handle, @queue_handle, payload)
+      put_message_on_queue(@queue_manager.connection_handle, @queue_handle, payload, reply_queue_name)
 
       close_queue(@queue_manager.connection_handle, @queue_handle, Constants::MQCO_NONE)
       @queue_handle = nil

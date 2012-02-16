@@ -24,4 +24,8 @@ describe RMQ::Queue do
     @queue.get_message.should == "I want to read this back"
   end
 
+  it "should put a message on a queue and use a reply queue name" do
+
+  end
+
 end

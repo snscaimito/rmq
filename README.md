@@ -6,6 +6,7 @@ rmq wraps the C API for IBM MQ Series message broker.
 
 Running Specs
 =============
+Specs can be run with 'rake spec'. Make sure the prerequisites are met.
 
 Prerequisites
 -------------

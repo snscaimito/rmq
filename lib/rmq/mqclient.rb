@@ -210,7 +210,7 @@ module RMQ
       raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot close queue" if completion_code_ptr.read_long != MQCC_OK
     end
 
-    def put_message_on_queue(connection_handle, queue_handle, payload)
+    def put_message_on_queue(connection_handle, queue_handle, payload, reply_queue_name = "")
       message_options = MQClient::PutMessageOptions.new
       message_options[:StrucId] = MQClient::PutMessageOptions::MQPMO_STRUC_ID
       message_options[:Version] = MQClient::PutMessageOptions::MQPMO_VERSION_1
@@ -223,7 +223,7 @@ module RMQ
       message_descriptor[:MsgType] = MQClient::MessageDescriptor::MQMT_DATAGRAM
       message_descriptor[:Priority] = 1
       message_descriptor[:Persistence] = MQClient::MessageDescriptor::MQPER_PERSISTENT
-      message_descriptor[:ReplyToQ] = ""
+      message_descriptor[:ReplyToQ] = reply_queue_name
 
       completion_code_ptr = FFI::MemoryPointer.new :long
       reason_code_ptr = FFI::MemoryPointer.new :long
