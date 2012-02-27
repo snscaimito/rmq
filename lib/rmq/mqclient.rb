@@ -3,7 +3,16 @@ module RMQ
     include Constants
     extend FFI::Library
 
-    ffi_lib "mqic32.dll"
+    def MQClient.running_on_windows?
+      (/cygwin|mswin|mingw|bccwin|wince|emx/ =~ RUBY_PLATFORM) != nil
+    end
+
+    def MQClient.running_on_linux?
+      RUBY_PLATFORM.include?("linux")
+    end
+
+    ffi_lib "mqic32.dll" if running_on_windows?
+    ffi_lib "libmqic" if running_on_linux?
     ffi_convention :stdcall
 
     attach_function :mqconn, :MQCONN,
