@@ -37,11 +37,28 @@ describe RMQ::Queue do
   end
 
   it "should time out waiting for a message" do
-    lambda { @queue.get_message(2) }.should raise_error(RMQ::RMQTimeOutError)
+    lambda { @queue.get_message({:timeout => 2}) }.should raise_error(RMQ::RMQTimeOutError)
   end
 
   it "should time out waiting for a message and not return any payload" do
-    lambda { @queue.get_message_payload(2) }.should raise_error(RMQ::RMQTimeOutError)
+    lambda { @queue.get_message_payload({:timeout => 2}) }.should raise_error(RMQ::RMQTimeOutError)
+  end
+
+  it "should find a message by id" do
+    message_id = @queue.put_message("I want to read this back")
+    message_id.should_not be_nil
+
+    message = @queue.find_message_by_id(message_id)
+    message.payload.should == "I want to read this back"
+  end
+
+  it "should find not a message by id" do
+    lambda { @queue.find_message_by_id([1,2,3]) }.should raise_error(RMQ::RMQMessageNotFoundException)
+  end
+
+  it "should time out when finding a message by id" do
+    message_id = [1,2,3]
+    lambda { @queue.find_message_by_id(message_id, {:timeout => 2}) }.should raise_error(RMQ::RMQTimeOutError)
   end
 
 end

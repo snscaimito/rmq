@@ -239,6 +239,8 @@ module RMQ
 
       mqput(connection_handle, queue_handle, message_descriptor, message_options, payload.length, payload, completion_code_ptr, reason_code_ptr)
       raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot send message" if completion_code_ptr.read_long != MQCC_OK
+
+      message_descriptor[:MsgId]
     end
 
     def queue_depth(connection_handle, queue_name)
@@ -260,14 +262,13 @@ module RMQ
       queue_depth
     end
 
-    def get_message_from_queue(connection_handle, queue_handle, timeout)
-      puts "--- get message from queue"
+    def get_message_from_queue(connection_handle, queue_handle, options = {})
       completion_code_ptr = FFI::MemoryPointer.new :long
       reason_code_ptr = FFI::MemoryPointer.new :long
       data_length_ptr = FFI::MemoryPointer.new :long
 
-      message_options = prepare_get_message_options(timeout, false)
-      message_descriptor = prepare_get_message_descriptor
+      message_options = prepare_get_message_options(false, options)
+      message_descriptor = prepare_get_message_descriptor(options)
 
       data_length = 8 * 1024
       buffer_ptr = FFI::MemoryPointer.new :char, data_length
@@ -285,12 +286,21 @@ module RMQ
         raise RMQException.new(completion_code_ptr.read_long, reason_code_ptr.read_long), "Cannot learn message length" unless completion_code_ptr.read_long == MQCC_OK
       end
 
-      Message.new(buffer_ptr.read_string, message_descriptor)
+      RMQ::Message.new(buffer_ptr.read_string, message_descriptor)
+    end
+
+    def print_msg_id(msg_id)
+      hex_string = ''
+      for i in (0..MQClient::MessageDescriptor::MSG_ID_LENGTH-1) do
+        hex_string << "0x#{msg_id[i].to_s(16)}"
+        hex_string << ", " if i < MQClient::MessageDescriptor::MSG_ID_LENGTH-1
+      end
+      hex_string
     end
 
     private
 
-    def prepare_get_message_options(timeout, accept_truncated_msg)
+    def prepare_get_message_options(accept_truncated_msg, options = {})
       message_options = GetMessageOptions.new
       message_options[:StrucId] = GetMessageOptions::MQGMO_STRUC_ID
       message_options[:Version] = GetMessageOptions::MQGMO_VERSION_1
@@ -300,29 +310,23 @@ module RMQ
         message_options[:Options] = GetMessageOptions::MQGMO_ACCEPT_TRUNCATED_MSG | message_options[:Options]
       end
 
-      if timeout > 0
+      if options.has_key?(:timeout)
         message_options[:Options] = GetMessageOptions::MQGMO_WAIT | message_options[:Options]
-        message_options[:WaitInterval] = timeout * 1000
+        message_options[:WaitInterval] = options[:timeout] * 1000
       end
 
       message_options
     end
 
-    def print_msg_id(msg_id)
-      puts "printing msg id"
-      for i in (0..MQClient::MessageDescriptor::MSG_ID_LENGTH-1) do
-        puts "#{i} = #{msg_id[i]}"
-      end
-    end
-
-    def prepare_get_message_descriptor(msg_id = nil)
+    def prepare_get_message_descriptor(options)
       message_descriptor = MQClient::MessageDescriptor.new
       message_descriptor[:StrucId] = MQClient::MessageDescriptor::MQMD_STRUC_ID
       message_descriptor[:Version] = MQClient::MessageDescriptor::MQMD_VERSION_1
 
-      if !msg_id.nil?
+      if options.has_key?(:message_id)
+        msg_id = options[:message_id]
         for i in (0..MQClient::MessageDescriptor::MSG_ID_LENGTH-1) do
-          message_descriptor[:MsgId][i] = msg_id[i]
+          message_descriptor[:MsgId][i] = msg_id[i].nil? ? 0 : msg_id[i]
         end
       end
 

@@ -18,4 +18,13 @@ module RMQ
   class RMQTimeOutError < RuntimeError
   end
 
+  class RMQMessageNotFoundException < RuntimeError
+    def initialize(message_id)
+    end
+
+    def message
+      "Could not find message"
+    end
+  end
+
 end

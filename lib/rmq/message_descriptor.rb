@@ -22,7 +22,7 @@ module RMQ
         :Format, [:char, 8],
         :Priority, :long,
         :Persistence, :long,
-        :MsgId, [:char, MSG_ID_LENGTH],
+        :MsgId, [:uint8, MSG_ID_LENGTH],
         :CorrelId, [:char, 24],
         :BackoutCount, :long,
         :ReplyToQ, [:char, 48],

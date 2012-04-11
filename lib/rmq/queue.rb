@@ -13,10 +13,12 @@ module RMQ
     def put_message(payload, reply_queue_name = "")
       @queue_handle = open_queue(@queue_manager.connection_handle, @queue_name, Constants::MQOO_OUTPUT) if @queue_handle.nil?
 
-      put_message_on_queue(@queue_manager.connection_handle, @queue_handle, payload, reply_queue_name)
+      message_id = put_message_on_queue(@queue_manager.connection_handle, @queue_handle, payload, reply_queue_name)
 
       close_queue(@queue_manager.connection_handle, @queue_handle, Constants::MQCO_NONE)
       @queue_handle = nil
+
+      message_id
     end
 
     def depth
@@ -24,32 +26,48 @@ module RMQ
     end
 
     # Gets a message from the queue. A timeout period can be specified in seconds.
-    def get_message(timeout = 0)
+    def get_message(options = {})
       @queue_handle = open_queue(@queue_manager.connection_handle, @queue_name, Constants::MQOO_INPUT_SHARED) if @queue_handle.nil?
 
-      if (timeout > 0)
+      begin
         begin_time = Time.now.to_i
-        begin
-          message = get_message_from_queue(@queue_manager.connection_handle, @queue_handle, timeout)
-        rescue RMQException
-          end_time = Time.now.to_i
-          raise RMQTimeOutError.new if end_time - begin_time >= timeout
-        end
-      else
-        message = get_message_from_queue(@queue_manager.connection_handle, @queue_handle, 0)
-      end
+        message = get_message_from_queue(@queue_manager.connection_handle, @queue_handle, options)
+      rescue RMQException
+        end_time = Time.now.to_i
 
-      close_queue(@queue_manager.connection_handle, @queue_handle, Constants::MQCO_NONE)
-      @queue_handle = nil
+        raise RMQTimeOutError.new if options.has_key?(:timeout) && (end_time - begin_time >= options[:timeout])
+      ensure
+        close_queue(@queue_manager.connection_handle, @queue_handle, Constants::MQCO_NONE)
+        @queue_handle = nil
+      end
 
       message
     end
 
     # Gets a message from the queue and returns the payload only. A timeout period can be specified
     # in seconds.
-    def get_message_payload(timeout = 0)
-      message = get_message(timeout)
+    def get_message_payload(options = {})
+      message = get_message(options)
       message.payload
+    end
+
+    def find_message_by_id(message_id, options = {})
+      message = get_message(options.merge({:message_id => message_id}))
+
+      if (message && compare_message_id(message_id, message.message_id))
+        return message
+      else
+        raise RMQMessageNotFoundException.new(message_id)
+      end
+    end
+
+    private
+
+    def compare_message_id(id1, id2)
+      for i in (0..MQClient::MessageDescriptor::MSG_ID_LENGTH-1) do
+        return false unless id1[i] == id2[i]
+      end
+      true
     end
   end
 end
