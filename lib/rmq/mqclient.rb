@@ -1,14 +1,16 @@
+require 'rbconfig'
+
 module RMQ
   module MQClient
     include Constants
     extend FFI::Library
 
     def MQClient.running_on_windows?
-      (/cygwin|mswin|mingw|bccwin|wince|emx/ =~ RUBY_PLATFORM) != nil
+      (/cygwin|mswin|mingw|bccwin|wince|emx/ =~ RbConfig::CONFIG['host_os']) != nil
     end
 
     def MQClient.running_on_linux?
-      RUBY_PLATFORM.include?("linux")
+      RbConfig::CONFIG['host_os'].include?("linux")
     end
 
     ffi_lib "mqic32.dll" if running_on_windows?
